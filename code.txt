@@ -1,0 +1,68 @@
+import pyspark
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import desc, count,sum, split, explode, col
+from pyspark.sql.functions import *
+spark = SparkSession.builder.appName("test").getOrCreate()
+data = spark.read.format('csv').option('header','true').load('C:/Users/buiqu/Downloads/de4python/Spark_Banking_Marketing.csv')
+
+#Câu 1 Có bao nhiêu nhiêu loại nghề nghiệp trong thống kê
+print('Câu 1:')
+tong_so_nghe_nghiep = data.select("job").distinct().count()
+print("Tổng số nghề nghiệp là: ", tong_so_nghe_nghiep)
+
+#Câu 2: Liệt kê danh sách và số lượng công việc trong thống kê
+print("Câu 2:")
+danhsach_congviec = data.groupBy("job").count()
+danhsach_congviec.show()
+
+#Câu 3: Có bao nhiêu người đã kết hôn và độc thân trong thống kê
+print("Câu 3: ")
+songuoikethon = data.filter(col("marital") == "married").count()
+songuoi_docthan = data.filter(col("marital") == "single").count()
+print("Số người đã kết hôn: ", songuoikethon)
+print("Số người độc thân: ", songuoi_docthan)
+
+#Câu 4: Có bao nhiêu loại tình trạng giáo dục trong thống kê và tương ứng số lượng người trong mỗi loại
+print("Câu 4:")
+tinhtrang_giaoduc = data.groupBy("education").count()
+print("Số loại tình trạng giáo dục", tinhtrang_giaoduc.count())
+print("Số lượng người trong mỗi loại tình trạng giáo dục:")
+tinhtrang_giaoduc.show()
+
+#Câu 5: Tính độ tuổi trung bình của khách hàng trong danh sách
+print("Câu 5:")
+# Lấy phần tử đầu tiên của một DataFrame, và [0] sau đó được sử dụng để truy cập vào giá trị đầu tiên của hàng đó
+dotuoi_trungbinh = data.select(avg("age")).first()[0] 
+print(f"Độ tuổi trung bình của khách hàng là: {dotuoi_trungbinh:.2f} tuổi")  #f-string đằng trước để nhúng biểu thức python vào trong chuỗi
+
+#Câu 6: Khách hàng có độ tuổi lớn nhất, nhỏ nhất là bao nhiêu?
+print("Câu 6:")
+max_age = data.select(max("age")).first()[0]
+min_age = data.select(min("age")).first()[0]
+print(f"Khách hàng có độ tuổi lớn nhất là: {max_age} tuổi")
+print(f"Khách hàng có độ tuổi nhỏ nhất là: {min_age} tuổi")
+
+#Câu 7:	Liệt kê danh sách các khách hàng còn độc thân, đồng thời có khoản vay ngân hàng và được giáo dục ở mức “secondary”
+print("Câu 7:")
+ds_kh = data.filter((col("marital")=="single") & (col("loan")=="yes") & (col("education")=="secondary"))
+ds_kh.show()
+
+#Câu 8:	Liệt kê danh sách các khách hàng có tuổi lớn hơn độ tuổi trung bình, đồng thời không có khoản nợ ngân hàng và chưa vay mua nhà?
+print("Câu 8:")
+ds = data.filter((data["age"]>dotuoi_trungbinh) & (data["loan"]== "no") & (data["housing"] == "no"))
+ds.show()
+
+#Câu 9:	Tạo một cột mới nếu: Age < 25 điền là Y, 25 <= Age <= 30 điền là T, 30 < Age điền là O
+print("Câu 9") 
+new_colum = data.withColumn("age_new", when(data["age"]< 25 , "Y").when((data["age"]>=25) & (data["age"]<30), "T").otherwise("O"))
+new_colum.show()
+
+#Cau 10:Tạo một cột mới nếu giá trị tại cột “Housing” là Yes và cột “Loan” là Yes điền là “Type1”, cột “Housing” là Yes 
+# và cột “Loan” là No điền là “Type2”, cột “Housing” là No và cột “Loan” là No điền là “Type3”, còn lại điền là “Type4”
+print("Câu 10")
+type = data.withColumn("Type", 
+                       when((data["housing"] == "yes") & (data["loan"] == "yes"), "TYPE1")
+                       .when((data["housing"] == "yes") & (data["loan"] == "no"), "TYPE2")
+                       .when((data["housing"] == "no") & (data["loan"] == "no"), "TYPE3")
+                       .otherwise("TYPE4"))
+type.show()
